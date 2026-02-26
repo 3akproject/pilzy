@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:pilzy/services/database_helper.dart';
 import '../models/medicine.dart';
 import 'package:intl/intl.dart';
 
 class AddMedicineScreen extends StatefulWidget {
-  const AddMedicineScreen({super.key});
+  final Medicine? medicine;
+
+  const AddMedicineScreen({super.key, this.medicine});
 
   @override
   State<AddMedicineScreen> createState() => _AddMedicineScreenState();
 }
 
+late TextEditingController nameController;
+late TextEditingController doseController;
+late TextEditingController quantityController;
+
 class _AddMedicineScreenState extends State<AddMedicineScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String name = "";
   String frequency = "Once a Day";
   List<TimeOfDay> times = [];
-  double doseAmount = 1;
   String doseUnit = "Tablet";
-  double totalQuantity = 1;
   String alarmTone = "Default";
 
   List<String> frequencyOptions = [
@@ -91,10 +95,10 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
           child: ListView(
             children: [
               TextFormField(
+                controller: nameController,
                 decoration: const InputDecoration(labelText: "Medicine Name"),
-                onChanged: (val) => name = val,
                 validator: (val) =>
-                    val!.isEmpty ? "Please enter medicine name" : null,
+                    val == null || val.isEmpty ? "Please enter medicine name" : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
@@ -137,10 +141,9 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
+                      controller: doseController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(labelText: "Dose Amount"),
-                      onChanged: (val) =>
-                          doseAmount = double.tryParse(val) ?? 1,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -161,9 +164,9 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                controller: quantityController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: "Total Quantity"),
-                onChanged: (val) => totalQuantity = double.tryParse(val) ?? 1,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
@@ -184,28 +187,87 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                   minimumSize: const Size(double.infinity, 50),
                 ),
                 child: const Text("Save Medicine"),
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
+
                     final med = Medicine(
-                      name: name,
+                      id: widget.medicine?.id,
+                      name: nameController.text.trim(),
                       frequency: frequency,
                       times: times
                           .map((t) =>
                               "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}")
                           .toList(),
-                      doseAmount: doseAmount,
+                      doseAmount: double.tryParse(doseController.text) ?? 1,
                       doseUnit: doseUnit,
-                      totalQuantity: totalQuantity,
+                      totalQuantity: double.tryParse(quantityController.text) ?? 1,
                       alarmTone: alarmTone,
                     );
-                    Navigator.pop(context, med);
+
+                    if (widget.medicine == null) {
+                      await DatabaseHelper.instance.insertMedicine(med);
+                    } else {
+                      await DatabaseHelper.instance.updateMedicine(med);
+                    }
+
+                    Navigator.pop(context, true);
                   }
                 },
-              )
+              ),
+
+              // 👇 SHOW DELETE BUTTON ONLY WHEN EDITING
+              if (widget.medicine != null)
+                TextButton(
+                  onPressed: () async {
+                    await DatabaseHelper.instance
+                        .deleteMedicine(widget.medicine!.id!);
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text(
+                    "Remove this medicine reminder",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    nameController = TextEditingController();
+    doseController = TextEditingController();
+    quantityController = TextEditingController();
+
+    if (widget.medicine != null) {
+      nameController.text = widget.medicine!.name;
+      frequency = widget.medicine!.frequency;
+
+      times = widget.medicine!.times.map((t) {
+        final parts = t.split(':');
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      }).toList();
+
+      doseController.text = widget.medicine!.doseAmount.toString();
+      doseUnit = widget.medicine!.doseUnit;
+      quantityController.text =
+          widget.medicine!.totalQuantity.toString();
+      alarmTone = widget.medicine!.alarmTone;
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    doseController.dispose();
+    quantityController.dispose();
+    super.dispose();
   }
 }

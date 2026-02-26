@@ -51,4 +51,23 @@ class DatabaseHelper {
 
     return result.map((map) => Medicine.fromMap(map)).toList();
   }
+
+  Future<int> updateMedicine(Medicine medicine) async {
+    final db = await instance.database;
+    return await db.update(
+      'medicines',
+      medicine.toMap(),
+      where: 'id = ?',
+      whereArgs: [medicine.id],
+    );
+  }
+
+  Future<int> deleteMedicine(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'medicines',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

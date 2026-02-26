@@ -52,23 +52,36 @@ class _MedicinesPageState extends State<MedicinesPage> {
                 return ListTile(
                   leading: const Icon(Icons.medication, color: Color(0xFF6B9676)),
                   title: Text(med.name),
-                  subtitle: Text(
-                      "${med.doseAmount} ${med.doseUnit} • ${med.frequency}"),
+                  subtitle: Text("${med.doseAmount} ${med.doseUnit} • ${med.frequency}"),
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddMedicineScreen(
+                          medicine: med,
+                        ),
+                      ),
+                    );
+
+                    if (result != null) {
+                      _loadMedicines();
+                    }
+                  },
                 );
               },
             ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6B9676),
         onPressed: () async {
-          final newMedicine = await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const AddMedicineScreen(),
             ),
           );
 
-          if (newMedicine != null) {
-            await _addMedicine(newMedicine);
+          if (result == true) {
+            _loadMedicines(); // 👈 refresh immediately
           }
         },
         child: const Icon(Icons.add),
