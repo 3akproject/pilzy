@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   shared_preferences: ^2.2.2
+  sqflite: ^2.3.3
+  path: ^1.9.0
 
   flutter:
     sdk: flutter

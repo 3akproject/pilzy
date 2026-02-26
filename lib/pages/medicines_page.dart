@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '/screens/add_medicine_screen.dart';
 import "/models/medicine.dart";
+import '../services/database_helper.dart';
 
 class MedicinesPage extends StatefulWidget {
   const MedicinesPage({super.key});
@@ -10,21 +11,32 @@ class MedicinesPage extends StatefulWidget {
 }
 
 class _MedicinesPageState extends State<MedicinesPage> {
-  List<Medicine> medicines = []; // 👈 store medicines here
+  List<Medicine> medicines = [];
 
-  // This function will be called when a new medicine is added
-  void _addMedicine(Medicine medicine) {
+  @override
+  void initState() {
+    super.initState();
+    _loadMedicines();
+  }
+
+  Future<void> _loadMedicines() async {
+    final data = await DatabaseHelper.instance.getAllMedicines();
     setState(() {
-      medicines.add(medicine);
+      medicines = data;
     });
+  }
+
+  Future<void> _addMedicine(Medicine medicine) async {
+    await DatabaseHelper.instance.insertMedicine(medicine);
+    _loadMedicines();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFFFFFFF),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: medicines.isEmpty
-          ? Center(
+          ? const Center(
               child: Text(
                 "No medicines added yet",
                 style: TextStyle(
@@ -38,27 +50,28 @@ class _MedicinesPageState extends State<MedicinesPage> {
               itemBuilder: (context, index) {
                 final med = medicines[index];
                 return ListTile(
-                  leading: Icon(Icons.medication, color: Color(0xFF6B9676)),
+                  leading: const Icon(Icons.medication, color: Color(0xFF6B9676)),
                   title: Text(med.name),
-                  subtitle: Text("${med.doseAmount} ${med.doseUnit} • ${med.frequency}"),
+                  subtitle: Text(
+                      "${med.doseAmount} ${med.doseUnit} • ${med.frequency}"),
                 );
               },
             ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Color(0xFF6B9676),
+        backgroundColor: const Color(0xFF6B9676),
         onPressed: () async {
-          // Navigate to AddMedicineScreen and get new medicine
           final newMedicine = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const AddMedicineScreen(),
             ),
           );
+
           if (newMedicine != null) {
-            _addMedicine(newMedicine);
+            await _addMedicine(newMedicine);
           }
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
