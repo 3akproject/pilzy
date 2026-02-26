@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pilzy/pin_verify_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'services/database_helper.dart';
 
 class UserSelectScreen extends StatelessWidget {
   const UserSelectScreen({super.key});
 
   Future<List<String>> _loadUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('users') ?? [];
+    final users = await DatabaseHelper.instance.getAllUsers();
+    return users.map((u) => u['username'] as String).toList();
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'services/database_helper.dart';
 import 'home_screen.dart';
 import 'new_user_screen.dart';
 import 'user_select_screen.dart';
@@ -20,23 +19,32 @@ class _EntryScreenState extends State<EntryScreen> {
   }
 
   Future<void> _decideFlow() async {
-    final prefs = await SharedPreferences.getInstance();
-    final users = prefs.getStringList('users') ?? [];
+    final users = await DatabaseHelper.instance.getAllUsers();
+
+    if (!mounted) return;
 
     if (users.isEmpty) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const NewUserScreen()),
+        MaterialPageRoute(
+          builder: (_) => const NewUserScreen(),
+        ),
       );
     } else if (users.length == 1) {
+      final username = users.first['username'] as String;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => HomeScreen(username: users.first)),
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(username: username),
+        ),
       );
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const UserSelectScreen()),
+        MaterialPageRoute(
+          builder: (_) => const UserSelectScreen(),
+        ),
       );
     }
   }

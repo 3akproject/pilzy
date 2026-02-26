@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
     );
   }
@@ -36,6 +36,14 @@ class DatabaseHelper {
         doseUnit TEXT,
         totalQuantity REAL,
         alarmTone TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        pin TEXT
       )
     ''');
   }
@@ -69,5 +77,35 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  // Insert new user
+  Future<int> insertUser(String username, String pin) async {
+    final db = await instance.database;
+    return await db.insert('users', {
+      'username': username,
+      'pin': pin,
+    });
+  }
+
+  // Get all users
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final db = await instance.database;
+    return await db.query('users');
+  }
+
+  // Get single user PIN
+  Future<String?> getUserPin(String username) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'users',
+      where: 'username = ?',
+      whereArgs: [username],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['pin'] as String;
+    }
+    return null;
   }
 }

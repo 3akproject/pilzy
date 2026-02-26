@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'services/database_helper.dart';
 import 'home_screen.dart';
 import 'widgets/pin_input.dart';
 
@@ -16,8 +16,8 @@ class _PinVerifyScreenState extends State<PinVerifyScreen> {
   String error = '';
 
   Future<void> _verify() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPin = prefs.getString('pin_${widget.username}');
+    final savedPin =
+        await DatabaseHelper.instance.getUserPin(widget.username);
 
     if (pinController.text == savedPin) {
       Navigator.pushReplacement(

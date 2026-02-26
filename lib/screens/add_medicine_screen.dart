@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pilzy/services/database_helper.dart';
 import '../models/medicine.dart';
 import 'package:intl/intl.dart';
+import 'package:pilzy/services/notification_service.dart';
 
 class AddMedicineScreen extends StatefulWidget {
   final Medicine? medicine;
@@ -211,6 +212,24 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                     }
 
                     Navigator.pop(context, true);
+                  }
+                  for (var time in times) {
+                    final now = DateTime.now();
+                    final scheduled = DateTime(
+                      now.year,
+                      now.month,
+                      now.day,
+                      time.hour,
+                      time.minute,
+                    );
+
+                    await NotificationService.instance.scheduleMedicineReminder(
+                      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                      title: "Medicine Reminder",
+                      body:
+                          "${nameController.text} - ${doseController.text} $doseUnit",
+                      scheduledTime: scheduled,
+                    );
                   }
                 },
               ),

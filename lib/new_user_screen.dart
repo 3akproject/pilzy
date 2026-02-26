@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'widgets/pin_input.dart';
+import 'services/database_helper.dart';
 
 class NewUserScreen extends StatefulWidget {
   const NewUserScreen({super.key});
@@ -32,14 +32,15 @@ class _NewUserScreenState extends State<NewUserScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final users = prefs.getStringList('users') ?? [];
-    users.add(name);
-    await prefs.setStringList('users', users);
+    await DatabaseHelper.instance.insertUser(name, pin);
+
+    if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomeScreen(username: name)),
+      MaterialPageRoute(
+        builder: (_) => HomeScreen(username: name),
+      ),
     );
   }
 
