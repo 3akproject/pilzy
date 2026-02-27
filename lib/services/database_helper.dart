@@ -17,7 +17,6 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-
     return await openDatabase(
       path,
       version: 2,
@@ -56,7 +55,6 @@ class DatabaseHelper {
   Future<List<Medicine>> getAllMedicines() async {
     final db = await instance.database;
     final result = await db.query('medicines');
-
     return result.map((map) => Medicine.fromMap(map)).toList();
   }
 
@@ -72,40 +70,23 @@ class DatabaseHelper {
 
   Future<int> deleteMedicine(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'medicines',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('medicines', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Insert new user
   Future<int> insertUser(String username, String pin) async {
     final db = await instance.database;
-    return await db.insert('users', {
-      'username': username,
-      'pin': pin,
-    });
+    return await db.insert('users', {'username': username, 'pin': pin});
   }
 
-  // Get all users
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     final db = await instance.database;
     return await db.query('users');
   }
 
-  // Get single user PIN
   Future<String?> getUserPin(String username) async {
     final db = await instance.database;
-    final result = await db.query(
-      'users',
-      where: 'username = ?',
-      whereArgs: [username],
-    );
-
-    if (result.isNotEmpty) {
-      return result.first['pin'] as String;
-    }
+    final result = await db.query('users', where: 'username = ?', whereArgs: [username]);
+    if (result.isNotEmpty) return result.first['pin'] as String;
     return null;
   }
 }

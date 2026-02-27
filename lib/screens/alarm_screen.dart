@@ -3,14 +3,16 @@ import 'package:audioplayers/audioplayers.dart';
 
 class AlarmScreen extends StatefulWidget {
   final String medicineName;
-  final String dose;
-  final String unit;
+  final String doseAmount;
+  final String doseUnit;
+  final String time;
 
   const AlarmScreen({
     super.key,
     required this.medicineName,
-    required this.dose,
-    required this.unit,
+    required this.doseAmount,
+    required this.doseUnit,
+    required this.time,
   });
 
   @override
@@ -18,64 +20,69 @@ class AlarmScreen extends StatefulWidget {
 }
 
 class _AlarmScreenState extends State<AlarmScreen> {
-  final AudioPlayer player = AudioPlayer();
+  final AudioPlayer _player = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    playAlarm();
+    _startAlarm();
   }
 
-  Future<void> playAlarm() async {
-    await player.setReleaseMode(ReleaseMode.loop);
-    await player.play(AssetSource('alarm.mp3'));
+  Future<void> _startAlarm() async {
+    await _player.setReleaseMode(ReleaseMode.loop);
+    await _player.play(AssetSource('audios/samsung.mp3'));
   }
 
-  Future<void> stopAlarm() async {
-    await player.stop();
+  Future<void> _stopAlarm() async {
+    await _player.stop();
     Navigator.pop(context);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final now = TimeOfDay.now();
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.red.shade100,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const Icon(Icons.alarm, size: 100, color: Colors.red),
+              const SizedBox(height: 20),
               Text(
-                now.format(context),
-                style: const TextStyle(
-                    fontSize: 48, fontWeight: FontWeight.bold),
+                widget.time.substring(11,16),
+                style: const TextStyle(fontSize: 28),
               ),
               const SizedBox(height: 20),
               Text(
                 widget.medicineName,
                 style: const TextStyle(
-                    fontSize: 28, fontWeight: FontWeight.bold),
+                    fontSize: 32, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               Text(
-                "${widget.dose} ${widget.unit}",
+                "${widget.doseAmount} ${widget.doseUnit}",
                 style: const TextStyle(fontSize: 24),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
-                  minimumSize: const Size(200, 60),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 ),
-                onPressed: stopAlarm,
+                onPressed: _stopAlarm,
                 child: const Text(
                   "STOP",
-                  style: TextStyle(fontSize: 22),
+                  style: TextStyle(fontSize: 20, color: Colors.white),
                 ),
-              ),
+              )
             ],
           ),
         ),
