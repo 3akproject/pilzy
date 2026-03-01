@@ -47,7 +47,7 @@ class _AlarmScreenState extends State<AlarmScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.red.shade100,
+      backgroundColor: const Color(0xFFFFCDD2),
       body: SafeArea(
         child: Center(
           child: Column(

@@ -3,8 +3,6 @@ import 'package:pilzy/entry_screen.dart';
 import 'services/notification_service.dart';
 import 'screens/alarm_screen.dart';
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.init();
@@ -24,7 +22,7 @@ class MedicineReminderApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF6B9676),
       ),
       home: const EntryScreen(),
-      navigatorKey: navigatorKey,
+      navigatorKey: NotificationService.instance.navigatorKey,
       onGenerateRoute: (settings) {
         if (settings.name == '/alarm') {
           final data = settings.arguments as String;
