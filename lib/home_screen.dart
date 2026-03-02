@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
 
-  int _selectedIndex = 0; // 👈 Medicines default
+  int _selectedIndex = 1; // 👈 Schedule default
 
   final List<Widget> _pages = const [
     MedicinesPage(),

@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/medicine.dart';
+import '../models/medicine_history.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -20,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4, // upgraded
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -37,6 +38,16 @@ class DatabaseHelper {
         doseUnit TEXT,
         totalQuantity REAL,
         alarmTone TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE medicine_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        medicineId INTEGER,
+        takenTime TEXT,
+        doseAmount REAL,
+        doseUnit TEXT
       )
     ''');
 
@@ -58,16 +69,20 @@ class DatabaseHelper {
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
+    if (oldVersion < 4) {
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS alert_time (
+        CREATE TABLE IF NOT EXISTS medicine_history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          hour INTEGER,
-          minute INTEGER
+          medicineId INTEGER,
+          takenTime TEXT,
+          doseAmount REAL,
+          doseUnit TEXT
         )
       ''');
     }
   }
+
+  // ================= ALERT TIME =================
 
   Future<void> saveAlertTime(int hour, int minute) async {
     final db = await database;
@@ -85,7 +100,8 @@ class DatabaseHelper {
     return null;
   }
 
-  // Existing methods unchanged...
+  // ================= MEDICINES =================
+
   Future<int> insertMedicine(Medicine medicine) async {
     final db = await database;
     return await db.insert('medicines', medicine.toMap());
@@ -111,6 +127,33 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete('medicines', where: 'id = ?', whereArgs: [id]);
   }
+
+  // ================= MEDICINE HISTORY =================
+
+  Future<int> insertMedicineHistory(MedicineHistory history) async {
+    final db = await database;
+    return await db.insert('medicine_history', history.toMap());
+  }
+
+  Future<List<MedicineHistory>> getTodayMedicineHistory() async {
+    final db = await database;
+
+    final todayStart = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+
+    final result = await db.query(
+      'medicine_history',
+      where: 'takenTime >= ?',
+      whereArgs: [todayStart.toIso8601String()],
+    );
+
+    return result.map((map) => MedicineHistory.fromMap(map)).toList();
+  }
+
+  // ================= USERS =================
 
   Future<int> insertUser(String username, String pin) async {
     final db = await database;
