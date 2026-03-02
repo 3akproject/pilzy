@@ -1,18 +1,128 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:android_intent_plus/android_intent.dart';
+import '../services/database_helper.dart';
+import '../models/medicine.dart';
+import '../models/medicine_history.dart';
 
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse response) {
-  if (response.actionId == 'increase_a') {
-    NotificationService.counterA.value++;
+Future<void> notificationTapBackground(NotificationResponse response) async {
+  tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+
+  const androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final FlutterLocalNotificationsPlugin plugin =
+      FlutterLocalNotificationsPlugin();
+
+  await plugin.initialize(
+    const InitializationSettings(android: androidSettings),
+  );
+
+  if (response.actionId == 'snooze') {
+    await _handleSnooze(plugin, response.payload, response.id!);
   }
 
-  if (response.actionId == 'increase_b') {
-    NotificationService.counterB.value++;
+  if (response.actionId == 'mark_taken') {
+    await _handleMarkTaken(response.payload);
+  }
+}
+
+Future<void> _handleSnooze(
+    FlutterLocalNotificationsPlugin plugin,
+    String? payload,
+    int originalId,
+) async {
+  if (payload == null) return;
+
+  final parts = payload.split('|');
+  if (parts.length < 3) return;
+
+  final medicineName = parts[0];
+  final doseAmount = parts[1];
+  final doseUnit = parts[2];
+
+  final newTime =
+      tz.TZDateTime.now(tz.local).add(const Duration(minutes: 3));
+
+  await plugin.zonedSchedule(
+    originalId, // 🔥 KEEP SAME ID
+    'Snoozed Reminder',
+    '$medicineName - $doseAmount $doseUnit',
+    newTime,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        'medicine_channel',
+        'Medicine Reminders',
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.alarm,
+        fullScreenIntent: true,
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound('samsung'),
+        actions: const [
+          AndroidNotificationAction(
+            'snooze',
+            'Snooze 3 min',
+            showsUserInterface: false,
+          ),
+          AndroidNotificationAction(
+            'mark_taken',
+            'Mark as Taken',
+            showsUserInterface: false,
+          ),
+        ],
+      ),
+    ),
+    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    uiLocalNotificationDateInterpretation:
+        UILocalNotificationDateInterpretation.absoluteTime,
+    payload: payload,
+  );
+}
+
+Future<void> _handleMarkTaken(String? payload) async {
+  if (payload == null) return;
+
+  final parts = payload.split('|');
+  if (parts.length < 3) return;
+
+  final medicineName = parts[0];
+  final doseAmount = double.tryParse(parts[1]) ?? 0;
+  final doseUnit = parts[2];
+
+  final medicines = await DatabaseHelper.instance.getAllMedicines();
+
+  try {
+    final medicine =
+        medicines.firstWhere((m) => m.name == medicineName);
+
+    final history = MedicineHistory(
+      medicineId: medicine.id!,
+      takenTime: DateTime.now(),
+      doseAmount: doseAmount,
+      doseUnit: doseUnit,
+    );
+
+    await DatabaseHelper.instance.insertMedicineHistory(history);
+
+    final updatedMedicine = Medicine(
+      id: medicine.id,
+      name: medicine.name,
+      frequency: medicine.frequency,
+      times: medicine.times,
+      doseAmount: medicine.doseAmount,
+      doseUnit: medicine.doseUnit,
+      totalQuantity: medicine.totalQuantity - doseAmount,
+      alarmTone: medicine.alarmTone,
+    );
+
+    await DatabaseHelper.instance.updateMedicine(updatedMedicine);
+  } catch (_) {
+    return;
   }
 }
 
@@ -25,10 +135,6 @@ class NotificationService {
 
   final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
-
-  // 🔥 Counters for test notification
-  static final ValueNotifier<int> counterA = ValueNotifier(0);
-  static final ValueNotifier<int> counterB = ValueNotifier(0);
 
   Future<void> init() async {
     tz.initializeTimeZones();
@@ -56,57 +162,26 @@ class NotificationService {
 
     await _local.initialize(
       settings,
-      onDidReceiveNotificationResponse: (details) {
-        if (details.actionId == 'increase_a') {
-          counterA.value++;
+      onDidReceiveNotificationResponse: (details) async {
+        if (details.actionId == 'snooze') {
+          await _handleSnooze(_local, details.payload, details.id!);
+          return;
         }
 
-        if (details.actionId == 'increase_b') {
-          counterB.value++;
+        if (details.actionId == 'mark_taken') {
+          await _handleMarkTaken(details.payload);
+          return;
         }
 
-        final payload = details.payload;
-        if (details.actionId == null && payload != null && payload.contains('|')) {
+        if (details.payload != null) {
           navigatorKey.currentState
-              ?.pushNamed('/alarm', arguments: payload);
+              ?.pushNamed('/alarm', arguments: details.payload);
         }
       },
       onDidReceiveBackgroundNotificationResponse:
           notificationTapBackground,
     );
   }
-
-  // 🔥 TEST NOTIFICATION WITH 2 BUTTONS
-  Future<void> showCounterTestNotification() async {
-    await _local.show(
-      777,
-      'Counter Test',
-      'Choose which counter to increase',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medicine_channel',
-          'Medicine Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-          autoCancel: true,
-          actions: [
-            AndroidNotificationAction(
-              'increase_a',
-              'Increase Counter A',
-              showsUserInterface: true,
-            ),
-            AndroidNotificationAction(
-              'increase_b',
-              'Increase Counter B',
-              showsUserInterface: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ================= EXISTING MEDICINE METHODS =================
 
   Future<void> scheduleDailyReminder({
     required int id,
@@ -129,18 +204,17 @@ class NotificationService {
           category: AndroidNotificationCategory.alarm,
           fullScreenIntent: true,
           playSound: true,
-          autoCancel: true,
           sound: const RawResourceAndroidNotificationSound('samsung'),
           actions: const [
             AndroidNotificationAction(
-              'increase_a',
-              'Increase Counter A',
-              showsUserInterface: true,
+              'snooze',
+              'Snooze 3 min',
+              showsUserInterface: false,
             ),
             AndroidNotificationAction(
-              'increase_b',
-              'Increase Counter B',
-              showsUserInterface: true,
+              'mark_taken',
+              'Mark as Taken',
+              showsUserInterface: false,
             ),
           ],
         ),
@@ -150,7 +224,7 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload:
-          '$id|$medicineName|$doseAmount|$doseUnit|${dateTime.toIso8601String()}',
+          '$medicineName|$doseAmount|$doseUnit|${dateTime.toIso8601String()}',
     );
   }
 

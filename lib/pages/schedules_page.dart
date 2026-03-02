@@ -10,14 +10,30 @@ class SchedulesPage extends StatefulWidget {
   State<SchedulesPage> createState() => _SchedulesPageState();
 }
 
-class _SchedulesPageState extends State<SchedulesPage> {
+class _SchedulesPageState extends State<SchedulesPage>
+    with WidgetsBindingObserver {
   List<_ScheduleItem> _scheduleList = [];
   Map<String, bool> _takenMap = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSchedules();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 🔥 This makes checkbox update when returning from notification
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadSchedules();
+    }
   }
 
   Future<void> _loadSchedules() async {
@@ -39,7 +55,6 @@ class _SchedulesPageState extends State<SchedulesPage> {
         });
 
         final key = "${med.id}_$timeString";
-
         tempTakenMap[key] = alreadyTaken;
 
         tempList.add(
@@ -54,30 +69,38 @@ class _SchedulesPageState extends State<SchedulesPage> {
 
     tempList.sort((a, b) => a.time.compareTo(b.time));
 
-    setState(() {
-      _scheduleList = tempList;
-      _takenMap = tempTakenMap;
-    });
+    if (mounted) {
+      setState(() {
+        _scheduleList = tempList;
+        _takenMap = tempTakenMap;
+      });
+    }
   }
 
   DateTime _parseTimeToday(String timeString) {
     final parts = timeString.split(":");
-
-    int hour = int.parse(parts[0]);
-    int minute = int.parse(parts[1]);
-
     final now = DateTime.now();
 
-    return DateTime(now.year, now.month, now.day, hour, minute);
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+    );
   }
 
   Future<void> _toggleTaken(_ScheduleItem item) async {
     final key = "${item.medicine.id}_${item.timeString}";
     final isTaken = _takenMap[key] ?? false;
 
-    if (isTaken) return; // prevent double insert
+    if (isTaken) return;
 
-    // Insert history
+    // Immediately update UI for instant tick
+    setState(() {
+      _takenMap[key] = true;
+    });
+
     final history = MedicineHistory(
       medicineId: item.medicine.id!,
       takenTime: DateTime.now(),
@@ -87,7 +110,6 @@ class _SchedulesPageState extends State<SchedulesPage> {
 
     await DatabaseHelper.instance.insertMedicineHistory(history);
 
-    // Reduce quantity
     final updatedMedicine = Medicine(
       id: item.medicine.id,
       name: item.medicine.name,
@@ -123,8 +145,8 @@ class _SchedulesPageState extends State<SchedulesPage> {
                 final isTaken = _takenMap[key] ?? false;
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: ListTile(
                     leading: Checkbox(
                       value: isTaken,
