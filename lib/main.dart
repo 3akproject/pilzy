@@ -21,18 +21,29 @@ class MedicineReminderApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: const Color(0xFF6B9676),
       ),
-      home: const EntryScreen(),
       navigatorKey: NotificationService.instance.navigatorKey,
+      home: const EntryScreen(),
       onGenerateRoute: (settings) {
         if (settings.name == '/alarm') {
-          final data = settings.arguments as String;
+          final data = settings.arguments as String?;
+
+          if (data == null || !data.contains('|')) {
+            return null; // ignore invalid payload
+          }
+
           final parts = data.split('|');
+
+          if (parts.length < 5) {
+            return null; // prevent RangeError
+          }
+
           return MaterialPageRoute(
             builder: (_) => AlarmScreen(
-              medicineName: parts[0],
-              doseAmount: parts[1],
-              doseUnit: parts[2],
-              time: parts[3],
+              notificationId: int.parse(parts[0]),
+              medicineName: parts[1],
+              doseAmount: parts[2],
+              doseUnit: parts[3],
+              time: parts[4],
             ),
           );
         }

@@ -5,6 +5,17 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:android_intent_plus/android_intent.dart';
 
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse response) {
+  if (response.actionId == 'increase_a') {
+    NotificationService.counterA.value++;
+  }
+
+  if (response.actionId == 'increase_b') {
+    NotificationService.counterB.value++;
+  }
+}
+
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -14,6 +25,10 @@ class NotificationService {
 
   final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
+
+  // 🔥 Counters for test notification
+  static final ValueNotifier<int> counterA = ValueNotifier(0);
+  static final ValueNotifier<int> counterB = ValueNotifier(0);
 
   Future<void> init() async {
     tz.initializeTimeZones();
@@ -42,122 +57,56 @@ class NotificationService {
     await _local.initialize(
       settings,
       onDidReceiveNotificationResponse: (details) {
+        if (details.actionId == 'increase_a') {
+          counterA.value++;
+        }
+
+        if (details.actionId == 'increase_b') {
+          counterB.value++;
+        }
+
         final payload = details.payload;
-        if (payload != null) {
+        if (details.actionId == null && payload != null && payload.contains('|')) {
           navigatorKey.currentState
               ?.pushNamed('/alarm', arguments: payload);
         }
       },
+      onDidReceiveBackgroundNotificationResponse:
+          notificationTapBackground,
     );
   }
 
-  /// 🔔 MEDICINE REMINDER
-  Future<void> scheduleMedicineReminder({
-    required int id,
-    required DateTime dateTime,
-    required String medicineName,
-    required String doseAmount,
-    required String doseUnit,
-  }) async {
-    final scheduledTZ = tz.TZDateTime.from(dateTime, tz.local);
-
-    await _local.zonedSchedule(
-      id,
-      'Medicine Reminder',
-      '$medicineName - $doseAmount $doseUnit',
-      scheduledTZ,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medicine_channel',
-          'Medicine Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.alarm,
-          fullScreenIntent: true,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('samsung'),
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload:
-          '$medicineName|$doseAmount|$doseUnit|${dateTime.toIso8601String()}',
-    );
-  }
-
-  /// 🔔 GENERAL DAILY ALERT (Alerts Page)
-  Future<void> scheduleDailyGeneralAlert({
-    required int id,
-    required DateTime dateTime,
-  }) async {
-    final scheduledTZ = tz.TZDateTime.from(dateTime, tz.local);
-
-    await _local.zonedSchedule(
-      id,
-      'Pilzy Alert',
-      'This is your scheduled daily alert',
-      scheduledTZ,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'medicine_channel',
-          'Medicine Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.alarm,
-          fullScreenIntent: true,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('samsung'),
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload:
-          'Daily Alert|1|Time|${dateTime.toIso8601String()}',
-    );
-  }
-
-  Future<void> instantTest() async {
-    final now = DateTime.now();
+  // 🔥 TEST NOTIFICATION WITH 2 BUTTONS
+  Future<void> showCounterTestNotification() async {
     await _local.show(
-      999,
-      'Test Alarm',
-      'Take 1 Tablet',
+      777,
+      'Counter Test',
+      'Choose which counter to increase',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'medicine_channel',
           'Medicine Reminders',
           importance: Importance.max,
           priority: Priority.high,
-          category: AndroidNotificationCategory.alarm,
-          fullScreenIntent: true,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('samsung'),
+          autoCancel: true,
+          actions: [
+            AndroidNotificationAction(
+              'increase_a',
+              'Increase Counter A',
+              showsUserInterface: true,
+            ),
+            AndroidNotificationAction(
+              'increase_b',
+              'Increase Counter B',
+              showsUserInterface: true,
+            ),
+          ],
         ),
       ),
-      payload: 'Test Med|1|Tablet|${now.toIso8601String()}',
     );
   }
 
-  Future<bool> isExactAlarmAllowed() async {
-    if (Platform.isAndroid) {
-      final androidPlugin = _local
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      return await androidPlugin?.areNotificationsEnabled() ?? false;
-    }
-    return true;
-  }
-
-  Future<void> openExactAlarmSettings() async {
-    if (Platform.isAndroid) {
-      final intent = AndroidIntent(
-          action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM');
-      await intent.launch();
-    }
-  }
+  // ================= EXISTING MEDICINE METHODS =================
 
   Future<void> scheduleDailyReminder({
     required int id,
@@ -171,7 +120,7 @@ class NotificationService {
       'Medicine Reminder',
       '$medicineName - $doseAmount $doseUnit',
       dateTime,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'medicine_channel',
           'Medicine Reminders',
@@ -180,22 +129,36 @@ class NotificationService {
           category: AndroidNotificationCategory.alarm,
           fullScreenIntent: true,
           playSound: true,
-          sound: RawResourceAndroidNotificationSound('samsung'),
+          autoCancel: true,
+          sound: const RawResourceAndroidNotificationSound('samsung'),
+          actions: const [
+            AndroidNotificationAction(
+              'increase_a',
+              'Increase Counter A',
+              showsUserInterface: true,
+            ),
+            AndroidNotificationAction(
+              'increase_b',
+              'Increase Counter B',
+              showsUserInterface: true,
+            ),
+          ],
         ),
       ),
-      androidScheduleMode:
-          AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents:
-          DateTimeComponents.time,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation
-              .absoluteTime,
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload:
-          '$medicineName|$doseAmount|$doseUnit|${dateTime.toIso8601String()}',
+          '$id|$medicineName|$doseAmount|$doseUnit|${dateTime.toIso8601String()}',
     );
   }
 
   Future<void> cancelNotification(int id) async {
-  await _local.cancel(id);
-}
+    await _local.cancel(id);
+  }
+
+  Future<void> cancelAll() async {
+    await _local.cancelAll();
+  }
 }
