@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // upgraded
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -150,6 +150,13 @@ class DatabaseHelper {
       whereArgs: [todayStart.toIso8601String()],
     );
 
+    return result.map((map) => MedicineHistory.fromMap(map)).toList();
+  }
+
+  // ⭐ REQUIRED FOR HISTORY PAGE
+  Future<List<MedicineHistory>> getAllMedicineHistory() async {
+    final db = await database;
+    final result = await db.query('medicine_history');
     return result.map((map) => MedicineHistory.fromMap(map)).toList();
   }
 

@@ -5,6 +5,7 @@ import 'pages/schedules_page.dart';
 import 'pages/history_page.dart';
 import 'pages/documents_page.dart';
 import 'pages/alerts_page.dart';
+import 'pages/user_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -15,8 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> {
-
-  int _selectedIndex = 1; // 👈 Schedule default
+  int _selectedIndex = 1; // Schedule default
 
   final List<Widget> _pages = const [
     MedicinesPage(),
@@ -32,20 +32,29 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openUserPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const UserPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.account_circle, size: 30),
+          onPressed: _openUserPage,
+        ),
         title: Text("Hi, ${widget.username}"),
+        centerTitle: false,
       ),
-
       body: _pages[_selectedIndex],
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
-
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.medication_outlined),
