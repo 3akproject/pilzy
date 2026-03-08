@@ -1,14 +1,42 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+
 import 'pin_verify_screen.dart';
 import 'services/database_helper.dart';
 import 'new_user_screen.dart';
 
-class UserSelectScreen extends StatelessWidget {
+class UserSelectScreen extends StatefulWidget {
   const UserSelectScreen({super.key});
 
-  Future<List<String>> _loadUsers() async {
-    final users = await DatabaseHelper.instance.getAllUsers();
-    return users.map((u) => u['username'] as String).toList();
+  @override
+  State<UserSelectScreen> createState() => _UserSelectScreenState();
+}
+
+class _UserSelectScreenState extends State<UserSelectScreen> {
+  List<Map<String, dynamic>> users = [];
+  Map<int, File?> images = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    users = await DatabaseHelper.instance.getAllUsers();
+    await _loadImages();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadImages() async {
+    final dir = await getApplicationDocumentsDirectory();
+
+    for (var u in users) {
+      final id = u['id'] as int;
+      final file = File('${dir.path}/profile_$id.png');
+      images[id] = await file.exists() ? file : null;
+    }
   }
 
   @override
@@ -18,38 +46,37 @@ class UserSelectScreen extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: FutureBuilder<List<String>>(
-              future: _loadUsers(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: ListView.builder(
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                final id = user['id'] as int;
+                final username = user['username'] as String;
 
-                final users = snapshot.data!;
-
-                return ListView.builder(
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      leading: const Icon(Icons.person),
-                      title: Text(users[index]),
-                      trailing: const Icon(Icons.lock_outline),
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                PinVerifyScreen(username: users[index]),
-                          ),
-                        );
-                      },
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.grey.shade300,
+                    backgroundImage:
+                        images[id] != null ? FileImage(images[id]!) : null,
+                    child: images[id] == null
+                        ? const Icon(Icons.person)
+                        : null,
+                  ),
+                  title: Text(username),
+                  trailing: const Icon(Icons.lock_outline),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            PinVerifyScreen(username: username),
+                      ),
                     );
                   },
                 );
               },
             ),
           ),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(12),

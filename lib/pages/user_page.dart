@@ -17,15 +17,35 @@ class UserPage extends StatefulWidget {
 class _UserPageState extends State<UserPage> {
   String username = "User";
   String pin = "1234";
-  File? profileImage;
+  int? userId;
 
+  File? profileImage;
   bool hasMultipleUsers = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProfileImage();
-    _checkUsers();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadUser();
+    await _loadProfileImage();
+    await _checkUsers();
+  }
+
+  // ================= LOAD CURRENT USER =================
+
+  Future<void> _loadUser() async {
+    final users = await DatabaseHelper.instance.getAllUsers();
+
+    if (users.isNotEmpty) {
+      final user = users.first; // TEMP: first user until session wiring
+      userId = user['id'] as int;
+      username = user['username'] as String;
+      pin = user['pin'] as String;
+      if (mounted) setState(() {});
+    }
   }
 
   // ================= USERS CHECK =================
@@ -41,7 +61,7 @@ class _UserPageState extends State<UserPage> {
       context,
       MaterialPageRoute(builder: (_) => const NewUserScreen()),
     );
-    _checkUsers();
+    _initialize();
   }
 
   void _goToSwitchUser() {
@@ -54,20 +74,25 @@ class _UserPageState extends State<UserPage> {
   // ================= PROFILE IMAGE =================
 
   Future<void> _loadProfileImage() async {
+    if (userId == null) return;
+
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/profile.png');
+    final file = File('${dir.path}/profile_$userId.png');
+
     if (await file.exists()) {
-      setState(() => profileImage = file);
+      if (mounted) setState(() => profileImage = file);
     }
   }
 
   Future<void> _pickProfileImage() async {
+    if (userId == null) return;
+
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result == null) return;
 
     final dir = await getApplicationDocumentsDirectory();
-    final saved =
-        await File(result.files.single.path!).copy('${dir.path}/profile.png');
+    final saved = await File(result.files.single.path!)
+        .copy('${dir.path}/profile_$userId.png');
 
     setState(() => profileImage = saved);
   }
@@ -93,7 +118,7 @@ class _UserPageState extends State<UserPage> {
       ),
     );
 
-    if (ok == true) {
+    if (ok == true && controller.text.trim().isNotEmpty) {
       setState(() => username = controller.text.trim());
     }
   }
@@ -159,6 +184,7 @@ class _UserPageState extends State<UserPage> {
       if (profileImage != null && await profileImage!.exists()) {
         await profileImage!.delete();
       }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("User Deleted")),
@@ -210,7 +236,6 @@ class _UserPageState extends State<UserPage> {
             onTap: _editPin,
           ),
           const Divider(height: 40),
-
           hasMultipleUsers
               ? ListTile(
                   leading:
@@ -224,7 +249,6 @@ class _UserPageState extends State<UserPage> {
                   title: const Text("Add User"),
                   onTap: _goToAddUser,
                 ),
-
           ListTile(
             leading: const Icon(Icons.delete, color: Colors.red),
             title: const Text("Delete User"),

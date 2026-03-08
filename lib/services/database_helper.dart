@@ -9,6 +9,16 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
+  Future<Map<String, dynamic>> getUserById(int id) async {
+    final db = await database;
+    final result = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return result.first;
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('pilzy.db');
@@ -178,5 +188,15 @@ class DatabaseHelper {
         await db.query('users', where: 'username = ?', whereArgs: [username]);
     if (result.isNotEmpty) return result.first['pin'] as String;
     return null;
+  }
+
+  Future<void> updateUsername(int id, String newName) async {
+    final db = await database;
+    await db.update('users', {'username': newName}, where: 'id=?', whereArgs: [id]);
+  }
+
+  Future<void> updatePin(int id, String newPin) async {
+    final db = await database;
+    await db.update('users', {'pin': newPin}, where: 'id=?', whereArgs: [id]);
   }
 }
