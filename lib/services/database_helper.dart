@@ -31,7 +31,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -41,6 +41,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE medicines (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER,
         name TEXT,
         frequency TEXT,
         times TEXT,
@@ -54,6 +55,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE medicine_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER,
         medicineId INTEGER,
         takenTime TEXT,
         doseAmount REAL,
@@ -90,6 +92,15 @@ class DatabaseHelper {
         )
       ''');
     }
+    if (oldVersion < 5) {
+      // Add userId column to existing tables
+      await db.execute('''
+        ALTER TABLE medicines ADD COLUMN userId INTEGER DEFAULT 1
+      ''');
+      await db.execute('''
+        ALTER TABLE medicine_history ADD COLUMN userId INTEGER DEFAULT 1
+      ''');
+    }
   }
 
   // ================= ALERT TIME =================
@@ -112,13 +123,25 @@ class DatabaseHelper {
 
   // ================= MEDICINES =================
 
-  Future<int> insertMedicine(Medicine medicine) async {
+  Future<int> insertMedicine(Medicine medicine, {int? userId}) async {
     final db = await database;
-    return await db.insert('medicines', medicine.toMap());
+    final data = medicine.toMap();
+    if (userId != null) {
+      data['userId'] = userId;
+    }
+    return await db.insert('medicines', data);
   }
 
-  Future<List<Medicine>> getAllMedicines() async {
+  Future<List<Medicine>> getAllMedicines({int? userId}) async {
     final db = await database;
+    if (userId != null) {
+      final result = await db.query(
+        'medicines',
+        where: 'userId = ?',
+        whereArgs: [userId],
+      );
+      return result.map((map) => Medicine.fromMap(map)).toList();
+    }
     final result = await db.query('medicines');
     return result.map((map) => Medicine.fromMap(map)).toList();
   }
@@ -140,12 +163,16 @@ class DatabaseHelper {
 
   // ================= MEDICINE HISTORY =================
 
-  Future<int> insertMedicineHistory(MedicineHistory history) async {
+  Future<int> insertMedicineHistory(MedicineHistory history, {int? userId}) async {
     final db = await database;
-    return await db.insert('medicine_history', history.toMap());
+    final data = history.toMap();
+    if (userId != null) {
+      data['userId'] = userId;
+    }
+    return await db.insert('medicine_history', data);
   }
 
-  Future<List<MedicineHistory>> getTodayMedicineHistory() async {
+  Future<List<MedicineHistory>> getTodayMedicineHistory({int? userId}) async {
     final db = await database;
 
     final todayStart = DateTime(
@@ -153,6 +180,15 @@ class DatabaseHelper {
       DateTime.now().month,
       DateTime.now().day,
     );
+
+    if (userId != null) {
+      final result = await db.query(
+        'medicine_history',
+        where: 'userId = ? AND takenTime >= ?',
+        whereArgs: [userId, todayStart.toIso8601String()],
+      );
+      return result.map((map) => MedicineHistory.fromMap(map)).toList();
+    }
 
     final result = await db.query(
       'medicine_history',
@@ -164,10 +200,23 @@ class DatabaseHelper {
   }
 
   // ⭐ REQUIRED FOR HISTORY PAGE
-  Future<List<MedicineHistory>> getAllMedicineHistory() async {
+  Future<List<MedicineHistory>> getAllMedicineHistory({int? userId}) async {
     final db = await database;
+    if (userId != null) {
+      final result = await db.query(
+        'medicine_history',
+        where: 'userId = ?',
+        whereArgs: [userId],
+      );
+      return result.map((map) => MedicineHistory.fromMap(map)).toList();
+    }
     final result = await db.query('medicine_history');
     return result.map((map) => MedicineHistory.fromMap(map)).toList();
+  }
+
+  Future<int> deleteMedicineHistory(int id) async {
+    final db = await database;
+    return await db.delete('medicine_history', where: 'id = ?', whereArgs: [id]);
   }
 
   // ================= USERS =================
@@ -198,5 +247,14 @@ class DatabaseHelper {
   Future<void> updatePin(int id, String newPin) async {
     final db = await database;
     await db.update('users', {'pin': newPin}, where: 'id=?', whereArgs: [id]);
+  }
+
+  Future<void> deleteUser(int id) async {
+    final db = await database;
+    // Delete all medicines for this user (if user-specific medicines are stored)
+    // For now, we're assuming medicines are shared, so we don't delete them
+    
+    // Delete user
+    await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
 }

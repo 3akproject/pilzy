@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'pin_verify_screen.dart';
 import 'services/database_helper.dart';
@@ -15,7 +13,6 @@ class UserSelectScreen extends StatefulWidget {
 
 class _UserSelectScreenState extends State<UserSelectScreen> {
   List<Map<String, dynamic>> users = [];
-  Map<int, File?> images = {};
 
   @override
   void initState() {
@@ -25,18 +22,7 @@ class _UserSelectScreenState extends State<UserSelectScreen> {
 
   Future<void> _loadUsers() async {
     users = await DatabaseHelper.instance.getAllUsers();
-    await _loadImages();
     if (mounted) setState(() {});
-  }
-
-  Future<void> _loadImages() async {
-    final dir = await getApplicationDocumentsDirectory();
-
-    for (var u in users) {
-      final id = u['id'] as int;
-      final file = File('${dir.path}/profile_$id.png');
-      images[id] = await file.exists() ? file : null;
-    }
   }
 
   @override
@@ -50,17 +36,12 @@ class _UserSelectScreenState extends State<UserSelectScreen> {
               itemCount: users.length,
               itemBuilder: (context, index) {
                 final user = users[index];
-                final id = user['id'] as int;
                 final username = user['username'] as String;
 
                 return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.grey.shade300,
-                    backgroundImage:
-                        images[id] != null ? FileImage(images[id]!) : null,
-                    child: images[id] == null
-                        ? const Icon(Icons.person)
-                        : null,
+                  leading: const CircleAvatar(
+                    backgroundColor: Color.fromARGB(255, 158, 158, 158),
+                    child: Icon(Icons.person),
                   ),
                   title: Text(username),
                   trailing: const Icon(Icons.lock_outline),

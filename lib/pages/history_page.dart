@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../services/database_helper.dart';
 import '../models/medicine_history.dart';
 import '../models/medicine.dart';
+import '../utils/time_formatter.dart';
 
 class HistoryPage extends StatefulWidget {
-  const HistoryPage({super.key});
+  final int? userId;
+
+  const HistoryPage({super.key, this.userId});
 
   @override
   State<HistoryPage> createState() => _HistoryPageState();
@@ -16,7 +19,8 @@ class _HistoryPageState extends State<HistoryPage> {
   List<Medicine> _medicines = [];
 
   String _selectedMedicine = "All";
-  String _selectedRange = "All";
+  DateTime? _fromDate;
+  DateTime? _toDate;
 
   @override
   void initState() {
@@ -25,14 +29,16 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _loadData() async {
-    final history = await DatabaseHelper.instance.getAllMedicineHistory();
-    final meds = await DatabaseHelper.instance.getAllMedicines();
+    final history = await DatabaseHelper.instance.getAllMedicineHistory(userId: widget.userId);
+    final meds = await DatabaseHelper.instance.getAllMedicines(userId: widget.userId);
 
     setState(() {
       _historyList = history;
       _filteredList = history;
       _medicines = meds;
     });
+    
+    _applyFilters();
   }
 
   void _applyFilters() {
@@ -47,19 +53,20 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     // Filter by date range
-    DateTime now = DateTime.now();
-    DateTime? cutoff;
-
-    if (_selectedRange == "1 Week") {
-      cutoff = now.subtract(const Duration(days: 7));
-    } else if (_selectedRange == "1 Month") {
-      cutoff = DateTime(now.year, now.month - 1, now.day);
-    } else if (_selectedRange == "3 Months") {
-      cutoff = DateTime(now.year, now.month - 3, now.day);
+    if (_fromDate != null) {
+      temp = temp.where((h) {
+        final historyDate = DateTime(h.takenTime.year, h.takenTime.month, h.takenTime.day);
+        final fromDateOnly = DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day);
+        return historyDate.isAtSameMomentAs(fromDateOnly) || historyDate.isAfter(fromDateOnly);
+      }).toList();
     }
 
-    if (cutoff != null) {
-      temp = temp.where((h) => h.takenTime.isAfter(cutoff!)).toList();
+    if (_toDate != null) {
+      temp = temp.where((h) {
+        final historyDate = DateTime(h.takenTime.year, h.takenTime.month, h.takenTime.day);
+        final toDateOnly = DateTime(_toDate!.year, _toDate!.month, _toDate!.day);
+        return historyDate.isAtSameMomentAs(toDateOnly) || historyDate.isBefore(toDateOnly);
+      }).toList();
     }
 
     temp.sort((a, b) => b.takenTime.compareTo(a.takenTime));
@@ -77,6 +84,32 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> _pickFromDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fromDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _fromDate = picked);
+      _applyFilters();
+    }
+  }
+
+  Future<void> _pickToDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _toDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _toDate = picked);
+      _applyFilters();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,54 +118,82 @@ class _HistoryPageState extends State<HistoryPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Medicine Filter
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedMedicine,
-                    items: [
-                      const DropdownMenuItem(
-                        value: "All",
-                        child: Text("All Medicines"),
-                      ),
-                      ..._medicines.map((m) => DropdownMenuItem(
-                            value: m.name,
-                            child: Text(m.name),
-                          )),
-                    ],
-                    onChanged: (value) {
-                      _selectedMedicine = value!;
-                      _applyFilters();
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Medicine",
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                DropdownButtonFormField<String>(
+                  value: _selectedMedicine,
+                  items: [
+                    const DropdownMenuItem(
+                      value: "All",
+                      child: Text("All Medicines"),
                     ),
+                    ..._medicines.map((m) => DropdownMenuItem(
+                          value: m.name,
+                          child: Text(m.name),
+                        )),
+                  ],
+                  onChanged: (value) {
+                    _selectedMedicine = value!;
+                    _applyFilters();
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Medicine",
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Range Filter
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedRange,
-                    items: const [
-                      DropdownMenuItem(value: "All", child: Text("All Time")),
-                      DropdownMenuItem(value: "1 Week", child: Text("1 Week")),
-                      DropdownMenuItem(value: "1 Month", child: Text("1 Month")),
-                      DropdownMenuItem(value: "3 Months", child: Text("3 Months")),
-                    ],
-                    onChanged: (value) {
-                      _selectedRange = value!;
-                      _applyFilters();
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Time Range",
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                const SizedBox(height: 12),
+                
+                // Date Range Pickers
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _pickFromDate,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('From Date', style: TextStyle(fontSize: 12)),
+                            Text(
+                              _fromDate == null ? 'Select' : formatDate(_fromDate!),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _pickToDate,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('To Date', style: TextStyle(fontSize: 12)),
+                            Text(
+                              _toDate == null ? 'Select' : formatDate(_toDate!),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Clear filters button
+                    if (_fromDate != null || _toDate != null)
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _fromDate = null;
+                            _toDate = null;
+                          });
+                          _applyFilters();
+                        },
+                        child: const Text('Clear'),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -151,11 +212,19 @@ class _HistoryPageState extends State<HistoryPage> {
                         subtitle: Text(
                           "${item.doseAmount} ${item.doseUnit}",
                         ),
-                        trailing: Text(
-                          "${item.takenTime.day}/${item.takenTime.month}/${item.takenTime.year}\n"
-                          "${item.takenTime.hour.toString().padLeft(2, '0')}:"
-                          "${item.takenTime.minute.toString().padLeft(2, '0')}",
-                          textAlign: TextAlign.right,
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "${item.takenTime.day}/${item.takenTime.month}/${item.takenTime.year}",
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              formatDateTime12Hour(item.takenTime),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       );
                     },

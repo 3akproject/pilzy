@@ -7,7 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 
 class DocumentsPage extends StatefulWidget {
-  const DocumentsPage({super.key});
+  final int? userId;
+
+  const DocumentsPage({super.key, this.userId});
 
   @override
   State<DocumentsPage> createState() => _DocumentsPageState();
@@ -26,7 +28,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
   Future<File> _getJsonFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/documents.json');
+    final fileName = widget.userId != null 
+        ? 'documents_${widget.userId}.json'
+        : 'documents.json';
+    return File('${dir.path}/$fileName');
   }
 
   Future<void> _loadDocuments() async {

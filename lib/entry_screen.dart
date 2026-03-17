@@ -6,7 +6,9 @@ import 'new_user_screen.dart';
 import 'user_select_screen.dart';
 
 class EntryScreen extends StatefulWidget {
-  const EntryScreen({super.key});
+  final Function(ThemeMode)? onThemeModeChanged;
+  
+  const EntryScreen({super.key, this.onThemeModeChanged});
 
   @override
   State<EntryScreen> createState() => _EntryScreenState();
@@ -30,7 +32,10 @@ class _EntryScreenState extends State<EntryScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => HomeScreen(username: savedUsername),
+          builder: (_) => HomeScreen(
+            username: savedUsername,
+            onThemeModeChanged: widget.onThemeModeChanged,
+          ),
         ),
       );
       return;
@@ -56,7 +61,10 @@ class _EntryScreenState extends State<EntryScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => HomeScreen(username: username),
+          builder: (_) => HomeScreen(
+            username: username,
+            onThemeModeChanged: widget.onThemeModeChanged,
+          ),
         ),
       );
     } else {

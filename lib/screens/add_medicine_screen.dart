@@ -7,7 +7,9 @@ import 'package:timezone/timezone.dart' as tz;
 
 class AddMedicineScreen extends StatefulWidget {
   final Medicine? medicine;
-  const AddMedicineScreen({super.key, this.medicine});
+  final int? userId;
+
+  const AddMedicineScreen({super.key, this.medicine, this.userId});
 
   @override
   State<AddMedicineScreen> createState() => _AddMedicineScreenState();
@@ -202,7 +204,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
             .cancelNotification(medicineId * 100 + i);
       }
     } else {
-      medicineId = await DatabaseHelper.instance.insertMedicine(med);
+      medicineId = await DatabaseHelper.instance.insertMedicine(med, userId: widget.userId);
     }
 
     await _scheduleAlarms(medicineId, med);
