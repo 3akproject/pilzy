@@ -1,45 +1,83 @@
 import 'package:flutter/material.dart';
-import 'package:pilzy/pin_verify_screen.dart';
-import 'services/database_helper.dart';
 
-class UserSelectScreen extends StatelessWidget {
+import 'pin_verify_screen.dart';
+import 'services/database_helper.dart';
+import 'new_user_screen.dart';
+
+class UserSelectScreen extends StatefulWidget {
   const UserSelectScreen({super.key});
 
-  Future<List<String>> _loadUsers() async {
-    final users = await DatabaseHelper.instance.getAllUsers();
-    return users.map((u) => u['username'] as String).toList();
+  @override
+  State<UserSelectScreen> createState() => _UserSelectScreenState();
+}
+
+class _UserSelectScreenState extends State<UserSelectScreen> {
+  List<Map<String, dynamic>> users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    users = await DatabaseHelper.instance.getAllUsers();
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select User')),
-      body: FutureBuilder<List<String>>(
-        future: _loadUsers(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      appBar: AppBar(title: const Text('Switch User')),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                final username = user['username'] as String;
 
-          final users = snapshot.data!;
-
-          return ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(users[index]),
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PinVerifyScreen(username: users[index]),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                return ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color.fromARGB(255, 158, 158, 158),
+                    child: Icon(Icons.person),
+                  ),
+                  title: Text(username),
+                  trailing: const Icon(Icons.lock_outline),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            PinVerifyScreen(username: username),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.person_add),
+                  label: const Text("Create New User"),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const NewUserScreen()),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

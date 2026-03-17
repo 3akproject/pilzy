@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
 import 'widgets/pin_input.dart';
 import 'services/database_helper.dart';
+import 'services/session_manager.dart';
+import 'home_screen.dart';
 
 class NewUserScreen extends StatefulWidget {
-  const NewUserScreen({super.key});
+  final Function(ThemeMode)? onThemeModeChanged;
+  
+  const NewUserScreen({super.key, this.onThemeModeChanged});
 
   @override
   State<NewUserScreen> createState() => _NewUserScreenState();
@@ -32,14 +35,22 @@ class _NewUserScreenState extends State<NewUserScreen> {
       return;
     }
 
-    await DatabaseHelper.instance.insertUser(name, pin);
+    final userId = await DatabaseHelper.instance.insertUser(name, pin);
+    print('✅ New user created: id=$userId, username=$name');
+
+    // Save session
+    await SessionManager.saveUserSession(userId, name);
 
     if (!mounted) return;
 
+    // Navigate to HomeScreen
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => HomeScreen(username: name),
+        builder: (_) => HomeScreen(
+          username: name,
+          onThemeModeChanged: widget.onThemeModeChanged,
+        ),
       ),
     );
   }

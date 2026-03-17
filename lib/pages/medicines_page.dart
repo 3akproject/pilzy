@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import '/screens/add_medicine_screen.dart';
-import "/models/medicine.dart";
 import '../services/database_helper.dart';
+import '../models/medicine.dart';
+import '../screens/add_medicine_screen.dart';
 
 class MedicinesPage extends StatefulWidget {
-  const MedicinesPage({super.key});
+  final int? userId;
+
+  const MedicinesPage({super.key, this.userId});
 
   @override
   State<MedicinesPage> createState() => _MedicinesPageState();
@@ -20,29 +22,20 @@ class _MedicinesPageState extends State<MedicinesPage> {
   }
 
   Future<void> _loadMedicines() async {
-    final data = await DatabaseHelper.instance.getAllMedicines();
+    final data = await DatabaseHelper.instance.getAllMedicines(userId: widget.userId);
     setState(() {
       medicines = data;
     });
   }
 
-  Future<void> _addMedicine(Medicine medicine) async {
-    await DatabaseHelper.instance.insertMedicine(medicine);
-    _loadMedicines();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
       body: medicines.isEmpty
           ? const Center(
               child: Text(
                 "No medicines added yet",
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF415F49),
-                ),
+                style: TextStyle(fontSize: 18, color: Color(0xFF415F49)),
               ),
             )
           : ListView.builder(
@@ -56,16 +49,9 @@ class _MedicinesPageState extends State<MedicinesPage> {
                   onTap: () async {
                     final result = await Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => AddMedicineScreen(
-                          medicine: med,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (_) => AddMedicineScreen(medicine: med, userId: widget.userId)),
                     );
-
-                    if (result != null) {
-                      _loadMedicines();
-                    }
+                    if (result != null) _loadMedicines();
                   },
                 );
               },
@@ -73,16 +59,9 @@ class _MedicinesPageState extends State<MedicinesPage> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF6B9676),
         onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddMedicineScreen(),
-            ),
-          );
-
-          if (result == true) {
-            _loadMedicines(); // 👈 refresh immediately
-          }
+          final result = await Navigator.push(context,
+              MaterialPageRoute(builder: (_) => AddMedicineScreen(userId: widget.userId)));
+          if (result == true) _loadMedicines();
         },
         child: const Icon(Icons.add),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/database_helper.dart';
+import 'services/session_manager.dart';
 import 'home_screen.dart';
 import 'widgets/pin_input.dart';
 
@@ -16,10 +17,16 @@ class _PinVerifyScreenState extends State<PinVerifyScreen> {
   String error = '';
 
   Future<void> _verify() async {
-    final savedPin =
-        await DatabaseHelper.instance.getUserPin(widget.username);
+    final db = DatabaseHelper.instance;
+    final users = await db.getAllUsers();
+    final user = users.firstWhere((u) => u['username'] == widget.username);
+
+    final savedPin = user['pin'] as String;
+    final userId = user['id'] as int;
 
     if (pinController.text == savedPin) {
+      await SessionManager.saveUserSession(userId, widget.username);
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -39,17 +46,11 @@ class _PinVerifyScreenState extends State<PinVerifyScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            PinInput(
-              controller: pinController,
-              hint: 'Enter PIN',
-            ),
+            PinInput(controller: pinController, hint: 'Enter PIN'),
             const SizedBox(height: 12),
             Text(error, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _verify,
-              child: const Text('Unlock'),
-            ),
+            ElevatedButton(onPressed: _verify, child: const Text('Unlock')),
           ],
         ),
       ),
