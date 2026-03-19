@@ -56,7 +56,7 @@ Designed as a practical and scalable solution, Pilzy ensures users never miss a 
 - **Schedules Page** — Set and track schedules  
 - **History Page** — View medication history  
 - **Documents Page** — Store health documents  
-- **Alerts Page** — Manage reminders & alerts  
+- **Settings Page** — Manage user and app settings  
 
 ---
 
