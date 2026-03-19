@@ -88,3 +88,8 @@ lib/
 ├── models/ # Data models
 ├── widgets/ # Reusable UI components
 └── main.dart # App entry point
+
+
+## Download APK
+
+[![Download APK](https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android)](https://github.com/3akproject/pilzy/releases/download/v1.0/pilzy.apk)
