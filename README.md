@@ -44,9 +44,9 @@ Designed as a practical and scalable solution, Pilzy ensures users never miss a 
 - Store medical documents  
 - Easy access to prescriptions and reports  
 
-### Alerts System
-- Manage important alerts related to medications  
-- Custom notifications  
+### Local Backup file generation
+- User can backup data to local storage
+- Can import the backup data in other devices using the file
 
 ---
 
